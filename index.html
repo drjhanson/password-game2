@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>بازی رمز عبور | The Password Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .rule {
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .rule-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    :root {
+      --bg-color: #f9fafb; /* Light mode background */
+      --text-color: #1f2937; /* Light mode text */
+      --card-bg: #ffffff; /* Light mode card */
+    }
+    [data-theme="dark"] {
+      --bg-color: #1f2937; /* Dark mode background */
+      --text-color: #e5e7eb; /* Dark mode text */
+      --card-bg: #111827; /* Dark mode card */
+    }
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s ease, color 0.3s ease;
+      font-family: 'Inter', sans-serif;
+    }
+    .card {
+      background-color: var(--card-bg);
+    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen transition-colors duration-300">
+  <div class="card p-8 rounded-xl shadow-xl w-full max-w-lg">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold text-center text-gray-900 dark:text-gray-100">بازی رمز عبور</h1>
+      <button id="themeToggle" class="bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100 px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+        🌙 حالت تاریک
+      </button>
+    </div>
+    <p class="text-center text-gray-600 dark:text-gray-400 mb-6">لطفاً یک رمز عبور انتخاب کنید | Please choose a password</p>
+    <input
+      type="text"
+      id="passwordInput"
+      class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg mb-6 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+      placeholder="رمز عبور خود را وارد کنید | Enter your password"
+      oninput="checkPassword()"
+    />
+    <div id="rules" class="space-y-3 mb-6"></div>
+    <div id="finalQuestion" class="hidden text-center">
+      <p class="text-red-600 dark:text-red-400 font-bold mb-4 text-lg">رمز عبور شما در حال سوختن است! سریع پاسخ دهید:<br>Your password is burning! Quick, answer this:</p>
+      <p class="mb-4 text-gray-700 dark:text-gray-300">اولین رئیس‌جمهور آمریکا چه کسی بود؟<br>Who was the first U.S. President?</p>
+      <input
+        type="text"
+        id="answerInput"
+        class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg mb-4 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        placeholder="پاسخ خود را وارد کنید | Enter your answer"
+      />
+      <button
+        onclick="checkFinalAnswer()"
+        class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+      >
+        ارسال پاسخ | Submit Answer
+      </button>
+    </div>
+    <div id="result" class="text-center font-bold text-lg"></div>
+  </div>
+
+  <script>
+    const rules = [
+      {
+        id: 1,
+        text: "رمز عبور باید حداقل ۸ کاراکتر باشد<br>Your password must be at least 8 characters.",
+        check: (pwd) => pwd.length >= 8,
+      },
+      {
+        id: 2,
+        text: "رمز عبور باید شامل یک عدد باشد<br>Your password must include a number.",
+        check: (pwd) => /\d/.test(pwd),
+      },
+      {
+        id: 3,
+        text: "رمز عبور باید شامل یک حرف بزرگ باشد<br>Your password must include an uppercase letter.",
+        check: (pwd) => /[A-Z]/.test(pwd),
+      },
+      {
+        id: 4,
+        text: "رمز عبور باید شامل یک کاراکتر خاص (!@#$%) باشد<br>Your password must include a special character (!@#$%).",
+        check: (pwd) => /[!@#$%]/.test(pwd),
+      },
+      {
+        id: 5,
+        text: "رمز عبور باید شامل یک حرف کوچک باشد<br>Your password must include a lowercase letter.",
+        check: (pwd) => /[a-z]/.test(pwd),
+      },
+      {
+        id: 6,
+        text: "مجموع اعداد در رمز عبور باید ۲۰ باشد<br>The sum of the numbers in your password must be 20.",
+        check: (pwd) => {
+          const numbers = pwd.match(/\d/g) || [];
+          return numbers.reduce((sum, num) => sum + parseInt(num), 0) === 20;
+        },
+      },
+      {
+        id: 7,
+        text: "رمز عبور نباید شامل فاصله باشد<br>Your password must not include spaces.",
+        check: (pwd) => !/\s/.test(pwd),
+      },
+      {
+        id: 8,
+        text: "رمز عبور باید شامل یک کلمه فارسی باشد<br>Your password must include a Persian word (e.g., 'سلام').",
+        check: (pwd) => /[\u0600-\u06FF]+/.test(pwd),
+      },
+      {
+        id: 9,
+        text: "طول رمز عبور باید یک عدد اول باشد<br>The length of your password must be a prime number.",
+        check: (pwd) => {
+          const len = pwd.length;
+          if (len < 2) return false;
+          for (let i = 2; i <= Math.sqrt(len); i++) {
+            if (len % i === 0) return false;
+          }
+          return true;
+        },
+      },
+      {
+        id: 10,
+        text: "رمز عبور باید با یک حرف شروع شود<br>Your password must start with a letter.",
+        check: (pwd) => /^[a-zA-Z]/.test(pwd),
+      },
+    ];
+
+    let gameState = {
+      gameOver: false,
+      burning: false,
+      currentRuleIndex: 0,
+    };
+
+    // Theme toggle
+    const themeToggle = document.getElementById("themeToggle");
+    themeToggle.addEventListener("click", () => {
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      document.documentElement.setAttribute("data-theme", isDark ? "light" : "dark");
+      themeToggle.textContent = isDark ? "🌙 حالت تاریک" : "☀️ حالت روشن";
+    });
+
+    // Initialize theme
+    document.documentElement.setAttribute("data-theme", "light");
+
+    function checkPassword() {
+      if (gameState.gameOver) return;
+
+      const password = document.getElementById("passwordInput").value;
+      const rulesDiv = document.getElementById("rules");
+      const finalQuestion = document.getElementById("finalQuestion");
+      const result = document.getElementById("result");
+
+      rulesDiv.innerHTML = "";
+      let allRulesMet = true;
+
+      // Show rules one by one
+      for (let i = 0; i <= gameState.currentRuleIndex; i++) {
+        const rule = rules[i];
+        const isMet = rule.check(password);
+        const ruleElement = document.createElement("div");
+        ruleElement.className = `flex items-center rule ${isMet ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`;
+        ruleElement.innerHTML = `
+          <span class="ml-2">${isMet ? "✅" : "❌"}</span>
+          <span>${rule.text}</span>
+        `;
+        rulesDiv.appendChild(ruleElement);
+        // Apply animation after a slight delay
+        setTimeout(() => {
+          ruleElement.classList.add("rule-visible");
+        }, 100 * i);
+        if (!isMet) allRulesMet = false;
+      }
+
+      // Reveal next rule if current one is met
+      if (gameState.currentRuleIndex < rules.length - 1 && rules[gameState.currentRuleIndex].check(password)) {
+        gameState.currentRuleIndex++;
+      }
+
+      if (gameState.currentRuleIndex === rules.length - 1 && allRulesMet && !gameState.burning) {
+        gameState.burning = true;
+        finalQuestion.classList.remove("hidden");
+        document.getElementById("passwordInput").disabled = true;
+      }
+    }
+
+    function checkFinalAnswer() {
+      const answer = document.getElementById("answerInput").value.trim().toLowerCase();
+      const result = document.getElementById("result");
+      const finalQuestion = document.getElementById("finalQuestion");
+
+      gameState.gameOver = true;
+      finalQuestion.classList.add("hidden");
+
+      if (answer === "george washington" || answer === "جورج واشنگتن") {
+        result.textContent = "🎉 شما برنده شدید! تبریک! | You won! Congratulations!";
+        result.className = "text-green-600 dark:text-green-400 text-center font-bold";
+      } else {
+        result.textContent = "🔥 رمز عبور شما سوخت! بازی تمام شد. | Your password burned! Game Over.";
+        result.className = "text-red-600 dark:text-red-400 text-center font-bold";
+      }
+
+      document.getElementById("passwordInput").disabled = true;
+      document.getElementById("answerInput").disabled = true;
+    }
+  </script>
+</body>
+</html>
